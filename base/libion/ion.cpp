@@ -253,8 +253,17 @@ int DmabufExporter::open(void) {
 }
 
 int DmabufExporter::close(int fd) {
-    if (version == DMAHEAP_VERSION)
-        return 0;
+    if (version == DMAHEAP_VERSION) {
+        /*
+         * open() hands out 0 as a placeholder client in this mode, so fds 0-2
+         * are not ours to close. Real fds are dma-buf fds: legacy callers (the
+         * Exynos camera HAL) release the buffers they allocated through this
+         * call, which closes the fd in ION mode. Doing nothing here leaks every
+         * one of those buffers.
+         */
+        if (fd <= STDERR_FILENO)
+            return 0;
+    }
 
     int ret = systemInterface.Close(fd);
     if (ret < 0)
